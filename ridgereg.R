@@ -26,11 +26,11 @@
 #' @field summary function. Returns summary of the above.
 #' @import methods
 #' @return Nothing.
-#' @export linreg
-#' @exportClass linreg
+#' @export ridgereg
+#' @exportClass ridgereg
 
 
-linreg <- setRefClass("linreg",
+ridgereg <- setRefClass("ridgereg",
                       fields = list(
                         X = "matrix",
                         y = "matrix",
@@ -47,11 +47,14 @@ linreg <- setRefClass("linreg",
                         name_ds = "character",
                         Q = "matrix",
                         R = "matrix",
-                        Qy = "matrix"),
+                        Qy = "matrix",
+                        lambda = "numeric",
+                        mean_X = "numeric",
+                        var_X = "numeric"),
                       
                       methods = list(
                         
-                        initialize = function(formula, data) {
+                        initialize = function(formula, data, lambda) {
                           
                           if (class(formula) != "formula") {
                             stop("Error: You should give a formula")
@@ -60,21 +63,57 @@ linreg <- setRefClass("linreg",
                             stop("Error: You should give a dataframe")
                           }
                           
+                          
                           X <<- model.matrix(formula, data)
                           y <<- as.matrix(data[all.vars(formula)[1]])
+                          # QR <- qr(X)
+                          # Q <<- qr.Q(QR)
+                          # R <<- qr.R(QR)
+                          # Qy <<- t(Q) %*% y
+                          I <- diag(ncol(X))
+                          mean_X <<- numeric()
+                          var_X <<- numeric()
+                          
+                           for (i in 2:ncol(X)){
+                             mean_X <<- c(mean_X, mean(X[,i]))
+                             var_X <<- c(var_X, var(X[,i]))
+                           }
+                          
+                           for (i in 2:ncol(X)){
+                             X[,i] <<- (X[,i] - mean_X[i-1]) / sqrt(var_X[i-1])
+                           }
+                          
+                          # for(i in 2:length(X[1,])){
+                          #   mean_X<<-c(mean_X,mean(X[,i]))
+                          #   var_X<<-c(var_X,var(X[,i]))
+                          # }
+                          # 
+                          # 
+                          # for(i in 2:length(X[1,])){
+                          #   for(j in 1:length(X[,i])){
+                          #     X[j,i]<<-(X[j,i]-mean_X[i-1])/sqrt(var_X[i-1])
+                          #   }
+                          # }
+                          
                           QR <- qr(X)
                           Q <<- qr.Q(QR)
                           R <<- qr.R(QR)
                           Qy <<- t(Q) %*% y
-                          b_hat <<- solve(R) %*% Qy
-                          y_hat <<- round(Q %*% t(Q) %*% y, 5)
-                          e_hat <<- round(y - y_hat, 5)
-                          df <<- length(X[,1]) - length(X[1,])
-                          s2_hat <<- (t(e_hat) %*% e_hat) / df
-                          var_b_hat <<- as.numeric(s2_hat) * solve(crossprod(R))
-                          sterr <<- abs((e_hat - mean(e_hat)))
-                          t_b <<- b_hat / sqrt(diag(var_b_hat))
-                          p_value <<- 2*pt(-abs(t_b), df)
+                        
+
+                          #b_hat <<- solve(R) %*% Qy  #<------ From linreg
+                          #y_hat <<- round(Q %*% t(Q) %*% y, 5)   #<------ From linreg
+                          
+                          b_hat <<- solve(R + (lambda * I)) %*% Qy
+                          y_hat <<- X %*% b_hat
+                          
+                          #e_hat <<- round(y - y_hat, 5)
+                          #df <<- length(X[,1]) - length(X[1,])
+                          #s2_hat <<- (t(e_hat) %*% e_hat) / df
+                          #var_b_hat <<- as.numeric(s2_hat) * solve(crossprod(R))
+                          # sterr <<- abs((e_hat - mean(e_hat)))
+                          # t_b <<- b_hat / sqrt(diag(var_b_hat))
+                          # p_value <<- 2*pt(-abs(t_b), df)
                           
                           f_text <<- formula
                           name_ds <<- deparse(substitute(data))
