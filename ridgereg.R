@@ -36,6 +36,7 @@ ridgereg <- setRefClass("ridgereg",
                         y = "matrix",
                         b_hat = "matrix",
                         y_hat = "matrix",
+                        y_hat_p = "matrix",
                         e_hat = "matrix",
                         df = "numeric",
                         s2_hat = "matrix",
@@ -54,7 +55,7 @@ ridgereg <- setRefClass("ridgereg",
                       
                       methods = list(
                         
-                        initialize = function(formula, data, lambda) {
+                        initialize = function(formula, data, lambda, QR_dec = FALSE) {
                           
                           if (class(formula) != "formula") {
                             stop("Error: You should give a formula")
@@ -66,54 +67,43 @@ ridgereg <- setRefClass("ridgereg",
                           
                           X <<- model.matrix(formula, data)
                           y <<- as.matrix(data[all.vars(formula)[1]])
-                          # QR <- qr(X)
-                          # Q <<- qr.Q(QR)
-                          # R <<- qr.R(QR)
-                          # Qy <<- t(Q) %*% y
+
                           I <- diag(ncol(X))
                           mean_X <<- numeric()
                           var_X <<- numeric()
                           
-                           for (i in 2:ncol(X)){
-                             mean_X <<- c(mean_X, mean(X[,i]))
-                             var_X <<- c(var_X, var(X[,i]))
-                           }
+                          for (i in 2:ncol(X)){
+                            mean_X <<- c(mean_X, mean(X[,i]))
+                            var_X <<- c(var_X, var(X[,i]))
+                          }
                           
-                           for (i in 2:ncol(X)){
-                             X[,i] <<- (X[,i] - mean_X[i-1]) / sqrt(var_X[i-1])
-                           }
+                          for (i in 2:ncol(X)){
+                            X[,i] <<- (X[,i] - mean_X[i-1]) / sqrt(var_X[i-1])
+                          }
                           
-                          # for(i in 2:length(X[1,])){
-                          #   mean_X<<-c(mean_X,mean(X[,i]))
-                          #   var_X<<-c(var_X,var(X[,i]))
-                          # }
-                          # 
-                          # 
-                          # for(i in 2:length(X[1,])){
-                          #   for(j in 1:length(X[,i])){
-                          #     X[j,i]<<-(X[j,i]-mean_X[i-1])/sqrt(var_X[i-1])
-                          #   }
-                          # }
+                          if(QR_dec == TRUE){ 
+                            QR <- qr(X)
+                            Q <<- qr.Q(QR)
+                            R <<- qr.R(QR)
+                            Qy <<- t(Q) %*% y
                           
-                          QR <- qr(X)
-                          Q <<- qr.Q(QR)
-                          R <<- qr.R(QR)
-                          Qy <<- t(Q) %*% y
-                        
-
-                          #b_hat <<- solve(R) %*% Qy  #<------ From linreg
-                          #y_hat <<- round(Q %*% t(Q) %*% y, 5)   #<------ From linreg
-                          
-                          b_hat <<- solve(R + (lambda * I)) %*% Qy
-                          y_hat <<- X %*% b_hat
-                          
-                          #e_hat <<- round(y - y_hat, 5)
-                          #df <<- length(X[,1]) - length(X[1,])
-                          #s2_hat <<- (t(e_hat) %*% e_hat) / df
-                          #var_b_hat <<- as.numeric(s2_hat) * solve(crossprod(R))
-                          # sterr <<- abs((e_hat - mean(e_hat)))
-                          # t_b <<- b_hat / sqrt(diag(var_b_hat))
-                          # p_value <<- 2*pt(-abs(t_b), df)
+  
+                            #b_hat <<- solve(R) %*% Qy  #<------ From linreg
+                            #y_hat <<- round(Q %*% t(Q) %*% y, 5)   #<------ From linreg
+                            
+                            b_hat <<- solve(R + (lambda * I)) %*% Qy
+                            y_hat <<- X %*% b_hat
+                            
+                            e_hat <<- round(y - y_hat, 5)
+                            df <<- length(X[,1]) - length(X[1,])
+                            s2_hat <<- (t(e_hat) %*% e_hat) / df
+                            var_b_hat <<- as.numeric(s2_hat) * solve(crossprod(R))
+                            sterr <<- abs((e_hat - mean(e_hat)))
+                            t_b <<- b_hat / sqrt(diag(var_b_hat))
+                            p_value <<- 2*pt(-abs(t_b), df)
+                          }else{
+                            b_hat <<- solve((t(X) %*% X) +(lambda*I)) %*% (t(X) %*% y)
+                          }
                           
                           f_text <<- formula
                           name_ds <<- deparse(substitute(data))
@@ -158,6 +148,28 @@ ridgereg <- setRefClass("ridgereg",
 
                         coef = function() {
                           return(b_hat)
+                        },
+                        
+                        predict = function(new_df=NA){
+                          if(all(!is.na(new_df))){
+                            
+                            orig_data <- matrix(rep(1,length(new_df[,1])))
+                            
+                            colnames<-"(Intercept)"
+                            
+                            for(i in 1:ncol(new_df)){
+                              for(j in 1:nrow(new_df)){
+                                new_df[j,i]<-(new_df[j,i]-mean_X[i])/sqrt(var_X[i])
+                              }
+                            }
+                            
+                            data <- cbind(orig_data, new_df)
+
+                            y_hat_p <<- as.matrix(data) %*% b_hat
+                            return(y_hat_p)
+                          }else{
+                            return(y_hat)
+                          }
                         },
 
                         summary = function() {
