@@ -1,0 +1,157 @@
+---
+title: "Ridge Regression"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{ridgereg}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = TRUE,
+    comment=NA)
+```
+
+# Exercise 1.2
+
+## Libraries import
+```{r}
+library(BonusLab)
+library(mlbench)
+library(caret)
+library(leaps)
+```
+
+
+## 1. Divide the BostonHousing data into a test and training dataset using the caret package.
+```{r}
+data(BostonHousing)
+index <- createDataPartition(BostonHousing$medv, p = .75, list = FALSE, times = 1)  
+training_set <- BostonHousing[ index,]   
+test_set  <- BostonHousing[-index,]
+```
+
+## 2. Fit a linear regression model and a fit a linear regression model with forward selection of covariates on the training dataset.
+```{r}
+lm_fitted = train(medv~., data=training_set, method="lm")     #Simple linear regression
+lm_lf_fitted = train(medv~., data=training_set, method="leapForward")   #Linear regression with forward selection
+```
+
+After fitting the models we can print their results and see their performance.
+```{r}
+print(lm_fitted)
+```
+
+```{r}
+print(lm_lf_fitted)
+```
+
+## 3. Evaluate the performance of this model on the training dataset.
+
+
+## 4. Fit a ridge regression model using your ridgereg() function to the training dataset for different values of λ.
+
+```{r}
+rregr = list(type="Regression", 
+              library="BonusLab",
+              loop=NULL,
+              prob=NULL)
+
+prm = data.frame(parameter="lambda",
+                  class="numeric",
+                  label="lambda")
+
+
+rregr$parameters = prm
+```
+
+```{r}
+ridgeGrid = function(y,x, len=NULL, search="grid"){
+  data.frame(lambda=c(0,0.5,1,2))
+}
+
+rregr$grid = ridgeGrid
+```
+
+```{r}
+ridgeFit <- function (x, y, wts, param, lev, last, classProbs, ...) {
+  if(is.data.frame(x)){
+    data = x
+  }else{
+    data = as.data.frame(x)
+  }
+  
+  data$.outcome <- y
+  out <- BonusLab::ridgereg$new(.outcome ~ ., data = data, lambda=param$lambda, ...)
+  return(out)
+}
+
+
+rregr$fit<-ridgeFit
+```
+
+```{r}
+ridgePred <- function (modelFit, newdata, submodels = NULL) {
+  if (!is.matrix(newdata)){
+    newdata <- as.matrix(newdata)
+  }
+  out<-modelFit$predict(newdata)
+  return(out)
+}
+
+
+rregr$predict<-ridgePred
+```
+
+```{r}
+rridge_fit <- train( medv ~ ., 
+                 data=training_set, 
+                 method=rregr)
+print(rridge_fit)
+plot(rridge_fit)
+```
+
+
+## 5. Find the best hyperparameter value for λ using 10-fold cross-validation on the training set.
+```{r}
+fitControl <- trainControl(method = "repeatedcv", 
+                           number=10, 
+                           repeats = 10)
+
+
+rridge_fit_cv <- train(medv ~ ., 
+                data = training_set, 
+                method = rregr, 
+                preProc = c("scale","center"), 
+                tuneLength = 10, 
+                trControl = fitControl)
+
+print(rridge_fit_cv)
+plot(rridge_fit_cv)
+```
+
+## 6. Evaluate the performance of all three models on the test dataset and write some concluding comments.
+
+### Simple linear model
+
+```{r}
+preds <- predict(lm_fitted, test_set[,1:13])
+postResample(pred = preds, obs = test_set[,14])
+```
+
+### Ridge regression
+
+```{r}
+preds <- predict(rridge_fit, test_set[,1:13])
+postResample(pred = preds, obs = test_set[,14])
+```
+### Ridge regression with cross validation
+
+```{r}
+preds <- predict(rridge_fit_cv, test_set[,1:13])
+postResample(pred = preds, obs = test_set[,14])
+```
+
+Sxolio edo poio einai kalitero
+

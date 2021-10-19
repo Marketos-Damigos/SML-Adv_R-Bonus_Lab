@@ -13,7 +13,10 @@ VignetteBuilder: knitr
 Depends: R (>= 3.3.0)
 LazyData: true
 Suggests: rmarkdown,
-    knitr
+    knitr,
+    mlbench,
+    caret,
+    leaps
 Imports: methods,
         MASS,
         dplyr,
