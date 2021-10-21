@@ -49,6 +49,7 @@ print(lm_lf_fitted)
 
 ## 3. Evaluate the performance of this model on the training dataset.
 
+The Linear Regression model has lower RMSE and MAE, but higher Rsquared compared to Linear Regression model with forward selection. Thus, the Linear Regression model has performance.
 
 ## 4. Fit a ridge regression model using your ridgereg() function to the training dataset for different values of λ.
 
@@ -153,5 +154,6 @@ preds <- predict(rridge_fit_cv, test_set[,1:13])
 postResample(pred = preds, obs = test_set[,14])
 ```
 
-Sxolio edo poio einai kalitero
+The three models have similar Rsquared results. Thus, based on RMSE and MAE results, the Linear Regression model has better performance compared to the Ridge Regression model and the Ridge Regression model with 10-fold cross-validation.
+
 
