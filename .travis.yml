@@ -1,4 +1,4 @@
 language: r
 before_install:
-  - cd Lab6package
+  - cd BonusLab
 cache: packages
