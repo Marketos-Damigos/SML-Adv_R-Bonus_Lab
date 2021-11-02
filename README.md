@@ -18,3 +18,5 @@ devtools::install_github("Marketos-Damigos/SML-Adv_R-Bonus_Lab", subdir="BonusLa
 ```
 browseVignettes("ridgereg")
 ```
+
+Trigger build
